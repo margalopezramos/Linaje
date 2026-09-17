@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #FAF7F1;
+  color: #2A1D12;
+}
+
+/* Foco de teclado visible — accesibilidad */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #C9A265;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
