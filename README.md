@@ -38,4 +38,3 @@ Abre http://localhost:3000
 2. Corregir en el WordPress actual (mientras siga vivo) los botones "Reservar" que aún apuntan a Bewe — deben ir a Netlify.
 3. Enviar el nuevo `sitemap.xml` en Google Search Console tras el lanzamiento.
 4. Monitorizar cobertura de indexación y Core Web Vitals la primera semana.
-"# Linaje" 
