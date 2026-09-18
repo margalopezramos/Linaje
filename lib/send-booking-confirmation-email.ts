@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { site } from '@/lib/site-data';
+import { emailWrapper, infoRow, infoTable } from '@/lib/email-template';
 
 export async function sendBookingConfirmationEmail({
   to,
@@ -35,19 +36,33 @@ export async function sendBookingConfirmationEmail({
     year: 'numeric',
   });
 
-  const html = `
-    <p>¡Hola ${nombre}!</p>
-    <p>Hemos recibido tu reserva en ${site.name}. Queda <strong>pendiente de confirmación</strong> por nuestro equipo — te avisaremos si hubiera cualquier cambio.</p>
-    <table style="border-collapse:collapse;margin:16px 0;">
-      <tr><td style="padding:4px 12px 4px 0;color:#666;">Servicio</td><td style="padding:4px 0;"><strong>${servicio}</strong></td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#666;">Fecha</td><td style="padding:4px 0;text-transform:capitalize;">${fechaBonita}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#666;">Hora</td><td style="padding:4px 0;">${hora}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#666;">Especialista</td><td style="padding:4px 0;">${especialista}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#666;">Precio</td><td style="padding:4px 0;">${precio.toFixed(2)} €</td></tr>
-    </table>
-    <p>Si necesitas cambiar o cancelar tu cita, escríbenos por WhatsApp o llama al ${site.phonePrimaryDisplay}.</p>
-    <p>¡Te esperamos!<br/>${site.name}</p>
+  const bodyHtml = `
+    <p style="margin:0 0 16px;">¡Hola ${nombre}!</p>
+    <p style="margin:0 0 16px;">
+      Hemos recibido tu reserva en ${site.name}. Queda
+      <strong>pendiente de confirmación</strong> por nuestro equipo —
+      te avisaremos si hubiera cualquier cambio.
+    </p>
+    ${infoTable(
+      infoRow('Servicio', servicio) +
+        infoRow('Fecha', fechaBonita.charAt(0).toUpperCase() + fechaBonita.slice(1)) +
+        infoRow('Hora', hora) +
+        infoRow('Especialista', especialista) +
+        infoRow('Precio', `${precio.toFixed(2)} €`)
+    )}
+    <p style="margin:16px 0 0;">
+      Si necesitas cambiar o cancelar tu cita, escríbenos por WhatsApp o
+      llama al ${site.phonePrimaryDisplay}.
+    </p>
   `;
+
+  const html = emailWrapper({
+    preheader: `Tu reserva de ${servicio} el ${fecha} a las ${hora} está pendiente de confirmación.`,
+    heading: 'Reserva recibida',
+    bodyHtml,
+    ctaLabel: 'Ver la web',
+    ctaUrl: site.url,
+  });
 
   // Si el cliente no dio email, mandamos el aviso solo a la administradora
   // (para que no se pierda la notificación) en vez de fallar.

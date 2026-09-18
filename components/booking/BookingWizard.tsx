@@ -13,6 +13,14 @@ const DIAS_ES = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
 
 type Paso = 1 | 2 | 3 | 4;
 
+function sumaMinutos(hhmm: string, minutos: number): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = h * 60 + m + minutos;
+  const hh = Math.floor((total / 60) % 24);
+  const mm = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
 export default function BookingWizard() {
   const searchParams = useSearchParams();
   const [paso, setPaso] = useState<Paso>(1);
@@ -22,7 +30,7 @@ export default function BookingWizard() {
   const [cargandoServicios, setCargandoServicios] = useState(true);
   const [categoria, setCategoria] = useState('Todas');
   const [busqueda, setBusqueda] = useState('');
-  const [servicio, setServicio] = useState<Tarifa | null>(null);
+  const [seleccionados, setSeleccionados] = useState<Tarifa[]>([]); // varios servicios en la misma cita
 
   // Calendario / horas
   const [calAnio, setCalAnio] = useState(new Date().getFullYear());
@@ -69,6 +77,15 @@ export default function BookingWizard() {
     })();
   }, [paso, calAnio, calMes]);
 
+  const duracionTotal = seleccionados.reduce((sum, s) => sum + (s.duracion_minutos || 0), 0);
+  const precioTotal = seleccionados.reduce((sum, s) => sum + Number(s.precio || 0), 0);
+
+  const toggleServicio = (t: Tarifa) => {
+    setSeleccionados((prev) =>
+      prev.some((s) => s.id === t.id) ? prev.filter((s) => s.id !== t.id) : [...prev, t]
+    );
+  };
+
   const seleccionarDia = async (iso: string) => {
     setFecha(iso);
     setHora(null);
@@ -76,9 +93,11 @@ export default function BookingWizard() {
     setCargandoHoras(true);
     const citasDia = citasMes.filter((c) => (c as any).fecha === iso);
     const bloqueosDia = bloqueosMes.filter((b) => b.fecha_inicio <= iso && iso <= b.fecha_fin);
+    // Usamos la duración TOTAL de todos los servicios elegidos, para que la
+    // especialista tenga hueco libre seguido para hacerlos uno detrás de otro.
     const resultado = calcularSlotsDisponibles({
       iso,
-      duracionMin: servicio?.duracion_minutos ?? 60,
+      duracionMin: duracionTotal || 60,
       citasDia,
       bloqueosDia,
       todasTarifas: tarifas,
@@ -96,7 +115,7 @@ export default function BookingWizard() {
     setError(null);
     if (!nombre.trim()) return setError('Escribe tu nombre.');
     if (!telefono.trim()) return setError('Escribe tu teléfono.');
-    if (!servicio || !fecha || !hora) return setError('Falta seleccionar servicio, fecha u hora.');
+    if (seleccionados.length === 0 || !fecha || !hora) return setError('Falta seleccionar servicio, fecha u hora.');
 
     setEnviando(true);
     const nombreCap = capitalizar(nombre.trim());
@@ -118,17 +137,24 @@ export default function BookingWizard() {
       console.error('No se pudo guardar la ficha del cliente (la reserva continúa igualmente):', errFicha);
     }
 
-    // Inserción de la cita — esto es lo único imprescindible.
-    const payload: Cita = {
-      cliente: nombreCap,
-      servicio: servicio.nombre_servicio,
-      hora,
-      empleado: empleadoFinal,
-      estado: 'pendiente',
-      fecha,
-      origen: 'web',
-    };
-    const { error: eCita } = await supabase.from('citas').insert([payload]);
+    // Un servicio = una fila en `citas`, todas seguidas en el tiempo,
+    // con la misma especialista, para que ocupen el hueco real que reservamos.
+    let horaCursor = hora;
+    const payloads: Cita[] = seleccionados.map((s) => {
+      const inicio = horaCursor;
+      horaCursor = sumaMinutos(horaCursor!, s.duracion_minutos || 0);
+      return {
+        cliente: nombreCap,
+        servicio: s.nombre_servicio,
+        hora: inicio!,
+        empleado: empleadoFinal,
+        estado: 'pendiente',
+        fecha,
+        origen: 'web',
+      };
+    });
+
+    const { error: eCita } = await supabase.from('citas').insert(payloads);
 
     if (eCita) {
       setError('No hemos podido completar la reserva: ' + eCita.message);
@@ -147,11 +173,11 @@ export default function BookingWizard() {
         body: JSON.stringify({
           to: email.trim() || undefined,
           nombre: nombreCap,
-          servicio: servicio.nombre_servicio,
+          servicio: seleccionados.map((s) => s.nombre_servicio).join(' + '),
           fecha,
           hora,
           especialista: empleadoFinal,
-          precio: Number(servicio.precio),
+          precio: precioTotal,
         }),
       });
     } catch (errEmail) {
@@ -163,7 +189,7 @@ export default function BookingWizard() {
   };
 
   const nuevaReserva = () => {
-    setServicio(null);
+    setSeleccionados([]);
     setFecha(null);
     setHora(null);
     setEspecialista(null);
@@ -224,7 +250,7 @@ export default function BookingWizard() {
         })}
       </div>
 
-      {/* Paso 1: servicio */}
+      {/* Paso 1: servicio(s) — se pueden elegir varios */}
       {paso === 1 && (
         <div>
           <select
@@ -243,39 +269,64 @@ export default function BookingWizard() {
             placeholder="Buscar servicio…"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full border border-ink/20 px-3 py-2 text-sm mb-6"
+            className="w-full border border-ink/20 px-3 py-2 text-sm mb-3"
           />
+          <p className="text-xs text-stone mb-6">Puedes elegir más de un servicio para la misma cita.</p>
+
+          {seleccionados.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6 p-3 bg-gold/10 border border-gold/30">
+              {seleccionados.map((s) => (
+                <span key={s.id} className="inline-flex items-center gap-2 bg-bone border border-gold/40 px-3 py-1.5 text-xs">
+                  {s.nombre_servicio}
+                  <button onClick={() => toggleServicio(s)} aria-label={`Quitar ${s.nombre_servicio}`} className="text-stone hover:text-red-700">
+                    ×
+                  </button>
+                </span>
+              ))}
+              <span className="w-full text-xs text-gold-dark mt-1">
+                Total: {duracionTotal} min · {precioTotal.toFixed(2)} €
+              </span>
+            </div>
+          )}
 
           {cargandoServicios ? (
             <p className="text-stone text-sm">Cargando servicios…</p>
           ) : (
             <div className="grid sm:grid-cols-2 gap-3">
-              {serviciosFiltrados.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setServicio(t)}
-                  className={`text-left border-2 p-4 transition-colors ${
-                    servicio?.id === t.id ? 'border-gold bg-gold/10' : 'border-ink/10 hover:border-gold/50'
-                  }`}
-                >
-                  <p className="text-[10px] uppercase tracking-wide text-stone mb-1">{t.categoria}</p>
-                  <p className="text-sm font-medium text-ink mb-2">{t.nombre_servicio}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="font-display text-gold-dark">{Number(t.precio).toFixed(2)} €</span>
-                    <span className="text-[11px] text-stone bg-sand px-2 py-0.5">{t.duracion_minutos} min</span>
-                  </div>
-                </button>
-              ))}
+              {serviciosFiltrados.map((t) => {
+                const elegido = seleccionados.some((s) => s.id === t.id);
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => toggleServicio(t)}
+                    className={`text-left border-2 p-4 transition-colors relative ${
+                      elegido ? 'border-gold bg-gold/10' : 'border-ink/10 hover:border-gold/50'
+                    }`}
+                  >
+                    {elegido && (
+                      <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-gold text-charcoal-dark text-xs flex items-center justify-center">
+                        ✓
+                      </span>
+                    )}
+                    <p className="text-[10px] uppercase tracking-wide text-stone mb-1">{t.categoria}</p>
+                    <p className="text-sm font-medium text-ink mb-2 pr-6">{t.nombre_servicio}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="font-display text-gold-dark">{Number(t.precio).toFixed(2)} €</span>
+                      <span className="text-[11px] text-stone bg-sand px-2 py-0.5">{t.duracion_minutos} min</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
 
           <div className="fixed inset-x-0 bottom-0 bg-bone border-t border-gold/30 p-4">
             <button
-              disabled={!servicio}
+              disabled={seleccionados.length === 0}
               onClick={() => setPaso(2)}
               className="max-w-3xl mx-auto block w-full px-4 py-3 text-sm font-medium bg-gold text-charcoal-dark hover:bg-gold-dark disabled:opacity-40 transition-colors"
             >
-              Continuar →
+              Continuar {seleccionados.length > 0 && `(${seleccionados.length} servicio${seleccionados.length > 1 ? 's' : ''})`} →
             </button>
           </div>
         </div>
@@ -285,8 +336,12 @@ export default function BookingWizard() {
       {paso === 2 && (
         <div>
           <button onClick={() => setPaso(1)} className="text-xs text-stone hover:text-gold-dark mb-4">
-            ← Cambiar servicio
+            ← Cambiar servicios
           </button>
+
+          <p className="text-xs text-stone mb-4">
+            Buscando {duracionTotal} min libres seguidos para: {seleccionados.map((s) => s.nombre_servicio).join(', ')}
+          </p>
 
           <div className="flex items-center gap-3 mb-4">
             <button
@@ -349,7 +404,7 @@ export default function BookingWizard() {
               {cargandoHoras ? (
                 <p className="text-stone text-sm">Cargando…</p>
               ) : !slots.some((s) => s.libres.length > 0) ? (
-                <p className="text-stone text-sm">No hay disponibilidad este día. Prueba con otro.</p>
+                <p className="text-stone text-sm">No hay disponibilidad este día para todos los servicios juntos. Prueba con otro día, u otro grupo de servicios.</p>
               ) : (
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-24">
                   {slots.map(({ hora: h, libres }) => (
@@ -392,11 +447,24 @@ export default function BookingWizard() {
             ← Cambiar fecha/hora
           </button>
 
-          <div className="bg-sand/40 border border-ink/10 p-4 mb-6 text-sm space-y-1">
-            <p><span className="text-stone">Servicio: </span>{servicio?.nombre_servicio}</p>
-            <p><span className="text-stone">Fecha: </span>{fecha}</p>
-            <p><span className="text-stone">Hora: </span>{hora}</p>
-            <p><span className="text-stone">Precio: </span>{Number(servicio?.precio ?? 0).toFixed(2)} €</p>
+          <div className="bg-sand/40 border border-ink/10 p-4 mb-6 text-sm space-y-2">
+            {(() => {
+              let cursor = hora;
+              return seleccionados.map((s) => {
+                const inicio = cursor;
+                cursor = sumaMinutos(cursor!, s.duracion_minutos || 0);
+                return (
+                  <p key={s.id}>
+                    <span className="text-stone">{inicio}: </span>
+                    {s.nombre_servicio} <span className="text-stone">({s.duracion_minutos} min, {Number(s.precio).toFixed(2)} €)</span>
+                  </p>
+                );
+              });
+            })()}
+            <p className="pt-2 border-t border-ink/10">
+              <span className="text-stone">Fecha: </span>{fecha}
+            </p>
+            <p><span className="text-stone">Total: </span><strong>{precioTotal.toFixed(2)} €</strong></p>
           </div>
 
           <div className="space-y-4 mb-24">
@@ -437,8 +505,10 @@ export default function BookingWizard() {
           <div className="w-16 h-16 rounded-full bg-gold text-charcoal-dark text-2xl flex items-center justify-center mx-auto mb-6">✓</div>
           <h2 className="font-display text-2xl text-ink mb-4">¡Reserva realizada!</h2>
           <div className="bg-sand/40 border border-gold/30 p-4 mb-6 text-sm space-y-1 text-left max-w-sm mx-auto">
-            <p><span className="text-stone">Servicio: </span>{servicio?.nombre_servicio}</p>
-            <p><span className="text-stone">Especialista: </span>{especialista}</p>
+            {seleccionados.map((s) => (
+              <p key={s.id}>{s.nombre_servicio}</p>
+            ))}
+            <p className="pt-2 border-t border-ink/10"><span className="text-stone">Especialista: </span>{especialista}</p>
             <p><span className="text-stone">Fecha: </span>{fecha}</p>
             <p><span className="text-stone">Hora: </span>{hora}</p>
           </div>
