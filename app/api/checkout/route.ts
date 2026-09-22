@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { products, SHIPPING_COST } from '@/lib/products';
-import { site } from '@/lib/site-data';
+import { site, getBaseUrl } from '@/lib/site-data';
 
-type IncomingLine = { productId: string; quantity: number; sesiones?: number; customAmount?: number };
+type IncomingLine = { productId: string; quantity: number; sesiones?: number; customAmount?: number; entrega?: 'email' | 'recogida' };
 
 export async function POST(req: NextRequest) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     } else if (product.pricingMode === 'package') {
       const paquete = product.paquetes?.find((p) => p.sesiones === line.sesiones);
       if (!paquete) continue;
-      unitAmount = Math.round(paquete.sesiones * paquete.precioPorSesion * 100);
+      unitAmount = Math.round(paquete.precioTotal * 100);
       nombreLinea = `${product.name} — Bono ${paquete.sesiones} sesiones`;
     } else if (product.pricingMode === 'custom') {
       unitAmount = Math.round((line.customAmount ?? 0) * 100);
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         unit_amount: unitAmount,
         product_data: {
           name: nombreLinea,
-          metadata: { productId: product.id, delivery: product.delivery },
+          metadata: { productId: product.id, delivery: product.delivery, entrega: line.entrega ?? 'email' },
         },
       },
     });
@@ -90,8 +90,8 @@ export async function POST(req: NextRequest) {
           optional: true,
         },
       ],
-      success_url: `${site.url}/tienda/gracias?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${site.url}/tienda`,
+      success_url: `${getBaseUrl()}/tienda/gracias?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${getBaseUrl()}/tienda`,
       metadata: { deliveryMethod },
     });
 

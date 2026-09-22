@@ -8,11 +8,12 @@ export type CartLine = {
   quantity: number; // nº de bonos/unidades iguales
   sesiones?: number; // paquete elegido (6 o 10), solo pricingMode 'package'
   customAmount?: number; // solo para pricingMode 'custom' (tarjeta regalo)
+  entrega?: 'email' | 'recogida'; // cómo se recibe el bono/tarjeta digital
 };
 
 type CartContextValue = {
   lines: CartLine[];
-  addItem: (productId: string, quantity: number, options?: { sesiones?: number; customAmount?: number }) => void;
+  addItem: (productId: string, quantity: number, options?: { sesiones?: number; customAmount?: number; entrega?: 'email' | 'recogida' }) => void;
   removeItem: (productId: string, sesiones?: number) => void;
   updateQuantity: (productId: string, quantity: number, sesiones?: number) => void;
   clearCart: () => void;
@@ -37,7 +38,7 @@ function lineTotal(line: CartLine): number {
   if (product.pricingMode === 'package') {
     const paquete = product.paquetes?.find((pk) => pk.sesiones === line.sesiones);
     if (!paquete) return 0;
-    return paquete.sesiones * paquete.precioPorSesion * line.quantity;
+    return paquete.precioTotal * line.quantity;
   }
   if (product.pricingMode === 'custom') return (line.customAmount ?? 0) * line.quantity;
   return 0;
@@ -69,15 +70,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [lines, hydrated]);
 
-  const addItem = (productId: string, quantity: number, options?: { sesiones?: number; customAmount?: number }) => {
+  const addItem = (productId: string, quantity: number, options?: { sesiones?: number; customAmount?: number; entrega?: 'email' | 'recogida' }) => {
     setLines((prev) => {
       const existing = prev.find((l) => l.productId === productId && l.sesiones === options?.sesiones);
       if (existing) {
         return prev.map((l) =>
-          l === existing ? { ...l, quantity: l.quantity + quantity, customAmount: options?.customAmount ?? l.customAmount } : l
+          l === existing
+            ? { ...l, quantity: l.quantity + quantity, customAmount: options?.customAmount ?? l.customAmount, entrega: options?.entrega ?? l.entrega }
+            : l
         );
       }
-      return [...prev, { productId, quantity, sesiones: options?.sesiones, customAmount: options?.customAmount }];
+      return [...prev, { productId, quantity, sesiones: options?.sesiones, customAmount: options?.customAmount, entrega: options?.entrega }];
     });
     setIsOpen(true);
   };

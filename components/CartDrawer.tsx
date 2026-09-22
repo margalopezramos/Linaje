@@ -91,6 +91,7 @@ export default function CartDrawer() {
                         {line.sesiones ? `Bono ${line.sesiones} sesiones` : `${line.quantity} ${product.unitLabel}`}
                         {line.sesiones ? ` · x${line.quantity}` : ''}
                         {line.customAmount ? ` · ${formatEUR(line.customAmount)} c/u` : ''}
+                        {line.entrega === 'recogida' ? ' · Recogida en el centro' : ''}
                       </p>
                       <div className="flex items-center gap-2">
                         <button
@@ -171,7 +172,7 @@ export default function CartDrawer() {
                 disabled={loading}
                 className="w-full px-4 py-3 text-sm font-medium bg-gold text-charcoal-dark hover:bg-gold-dark transition-colors disabled:opacity-60"
               >
-                {loading ? 'Procesando…' : 'Pagar con Stripe'}
+                {loading ? 'Procesando…' : 'Pagar'}
               </button>
               <button type="button" onClick={cart.clearCart} className="w-full text-xs text-stone hover:text-ink">
                 Vaciar carrito

@@ -55,7 +55,7 @@ export default function HomePage() {
             className="inline-flex items-center gap-2 mt-6 px-3 py-1.5 border border-gold/50 text-xs sm:text-sm text-gold-dark hover:bg-gold/10 transition-colors"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-gold-dark" />
-            Bono INDIBA Corporal desde 69,99 € / sesión →
+            Bono INDIBA Corporal desde 69,90 € / sesión →
           </Link>
 
           <div className="mt-6 flex flex-wrap gap-4">

@@ -14,8 +14,9 @@ const CATEGORY_LABEL: Record<Product['category'], string> = {
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
-  const [customAmount, setCustomAmount] = useState(30); // importe por defecto de la tarjeta regalo
+  const [customAmount, setCustomAmount] = useState(30);
   const [paqueteElegido, setPaqueteElegido] = useState(product.paquetes?.[0]?.sesiones);
+  const [entrega, setEntrega] = useState<'email' | 'recogida'>('email');
   const [added, setAdded] = useState(false);
 
   const paquete = product.paquetes?.find((p) => p.sesiones === paqueteElegido);
@@ -24,7 +25,7 @@ export default function ProductCard({ product }: { product: Product }) {
     product.pricingMode === 'fixed'
       ? product.priceValue ?? 0
       : product.pricingMode === 'package'
-        ? (paquete ? paquete.sesiones * paquete.precioPorSesion : 0)
+        ? (paquete ? paquete.precioTotal : 0)
         : customAmount;
 
   const lineTotal = unitPrice * quantity;
@@ -33,6 +34,7 @@ export default function ProductCard({ product }: { product: Product }) {
     addItem(product.id, quantity, {
       sesiones: product.pricingMode === 'package' ? paqueteElegido : undefined,
       customAmount: product.pricingMode === 'custom' ? customAmount : undefined,
+      entrega: product.delivery === 'digital' ? entrega : undefined,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -62,7 +64,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
         <div className="mt-auto">
           {product.pricingMode === 'package' && product.paquetes && (
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2 mb-2">
               {product.paquetes.map((p) => (
                 <button
                   key={p.sesiones}
@@ -73,10 +75,19 @@ export default function ProductCard({ product }: { product: Product }) {
                   }`}
                 >
                   <span className="block text-sm font-medium text-ink">{p.sesiones} sesiones</span>
-                  <span className="block text-xs text-gold-dark">{formatEUR(p.precioPorSesion)}/sesión</span>
+                  <span className="block text-xs text-gold-dark">{formatEUR(p.precioTotal)} total</span>
+                  <span className="block text-[10px] text-stone">{formatEUR(p.precioTotal / p.sesiones)}/sesión</span>
                 </button>
               ))}
             </div>
+          )}
+
+          {product.duracion && <p className="text-[11px] text-stone mb-2">Duración de la sesión: {product.duracion}</p>}
+
+          {product.precioSesionSuelta && (
+            <p className="text-[11px] text-stone mb-3">
+              Precio de una sesión suelta (sin bono): {formatEUR(product.precioSesionSuelta)}
+            </p>
           )}
 
           {product.pricingMode === 'custom' && (
@@ -94,6 +105,22 @@ export default function ProductCard({ product }: { product: Product }) {
                 <span>€</span>
               </div>
             </label>
+          )}
+
+          {product.ofrecerRecogida && (
+            <div className="mb-3">
+              <p className="text-xs text-stone mb-1">Cómo lo quieres recibir</p>
+              <div className="flex gap-3 text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" checked={entrega === 'email'} onChange={() => setEntrega('email')} className="accent-gold-dark" />
+                  Por email (PDF)
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" checked={entrega === 'recogida'} onChange={() => setEntrega('recogida')} className="accent-gold-dark" />
+                  Recogida gratis en el centro
+                </label>
+              </div>
+            </div>
           )}
 
           <div className="flex items-center gap-3 mb-3">

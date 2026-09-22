@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { site } from '@/lib/site-data';
+import { site, getBaseUrl } from '@/lib/site-data';
 import { emailWrapper, infoRow, infoTable } from '@/lib/email-template';
 
 export async function sendBookingConfirmationEmail({
@@ -61,7 +61,7 @@ export async function sendBookingConfirmationEmail({
     heading: 'Reserva recibida',
     bodyHtml,
     ctaLabel: 'Ver la web',
-    ctaUrl: site.url,
+    ctaUrl: getBaseUrl(),
   });
 
   // Si el cliente no dio email, mandamos el aviso solo a la administradora

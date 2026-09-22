@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { generateVoucherPdf, generateVoucherCode } from '@/lib/generate-voucher-pdf';
+import { generateVoucherPdf, generateVoucherCode, VoucherTipo } from '@/lib/generate-voucher-pdf';
 import { sendVoucherEmail } from '@/lib/send-voucher-email';
 
 // Stripe necesita el cuerpo de la petición SIN procesar para poder
@@ -49,21 +49,33 @@ export async function POST(req: NextRequest) {
         const recipientName = recipientNameField?.text?.value || undefined;
 
         if (buyerEmail) {
-          const code = generateVoucherCode();
-          const totalAmount = (session.amount_total ?? 0) / 100;
+          // Un PDF por artículo digital, cada uno con su propio código y su
+          // propio diseño (Bono de sesiones vs Tarjeta Regalo son distintos).
+          const vouchers: { code: string; pdfBytes: Uint8Array; entrega: 'email' | 'recogida' }[] = [];
 
-          const pdfBytes = await generateVoucherPdf({
-            code,
-            recipientName,
-            buyerEmail,
-            items: digitalItems.map((item) => ({
-              name: item.description ?? 'Bono',
-              quantity: item.quantity ?? 1,
-            })),
-            totalAmount,
-          });
+          for (const item of digitalItems) {
+            const product = item.price?.product as Stripe.Product | undefined;
+            const productId = product?.metadata?.productId ?? '';
+            const entrega = (product?.metadata?.entrega as 'email' | 'recogida') ?? 'email';
+            const tipo: VoucherTipo = productId === 'tarjeta-regalo' ? 'tarjeta' : 'bono';
 
-          await sendVoucherEmail({ to: buyerEmail, recipientName, code, pdfBytes });
+            const code = generateVoucherCode();
+            const unitAmount = (item.amount_total ?? 0) / 100;
+
+            const pdfBytes = await generateVoucherPdf({
+              code,
+              tipo,
+              recipientName,
+              buyerEmail,
+              items: [{ name: item.description ?? 'Bono', quantity: item.quantity ?? 1 }],
+              totalAmount: unitAmount,
+              entrega,
+            });
+
+            vouchers.push({ code, pdfBytes, entrega });
+          }
+
+          await sendVoucherEmail({ to: buyerEmail, recipientName, vouchers });
         }
       }
     } catch (err) {

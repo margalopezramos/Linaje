@@ -59,3 +59,11 @@ export const mainNav: NavItem[] = [
   { label: 'Quiénes somos', href: '/quienes-somos' },
   { label: 'Contacto', href: '/contact-arguelles' },
 ];
+
+// Mientras el dominio real (centrodeesteticalinaje.com) no apunte todavía
+// a esta web, usa NEXT_PUBLIC_APP_URL (tu URL de Vercel) para que los
+// enlaces de vuelta (emails, redirecciones de Stripe) funcionen de verdad.
+// En cuanto cambies el DNS, puedes quitar esa variable y usará site.url.
+export function getBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL || site.url;
+}

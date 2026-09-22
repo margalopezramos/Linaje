@@ -1,4 +1,4 @@
-import { site } from '@/lib/site-data';
+import { site, getBaseUrl } from '@/lib/site-data';
 
 // Plantilla de email compartida, con el estilo carbón/dorado de la web.
 // Los clientes de email tienen soporte de CSS muy limitado (nada de
@@ -46,7 +46,7 @@ export function emailWrapper({
           <!-- Cabecera carbón -->
           <tr>
             <td style="background-color:${CHARCOAL}; padding:28px 32px; text-align:center;">
-              <img src="${site.url}/logo.png" alt="${site.name}" width="48" height="42" style="display:block; margin:0 auto 8px;" />
+              <img src="${getBaseUrl()}/logo.png" alt="${site.name}" width="48" height="42" style="display:block; margin:0 auto 8px;" />
               <div style="color:${BONE}; font-family: Georgia, serif; font-size:18px; letter-spacing:2px; text-transform:uppercase;">
                 ${site.shortName}
               </div>
