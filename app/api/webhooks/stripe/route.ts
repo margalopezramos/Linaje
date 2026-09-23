@@ -47,16 +47,18 @@ export async function POST(req: NextRequest) {
         const buyerEmail = session.customer_details?.email;
         const recipientNameField = session.custom_fields?.find((f) => f.key === 'recipient_name');
         const recipientName = recipientNameField?.text?.value || undefined;
+        // isGift es una elección del carrito para todo el pedido (no por
+        // producto), guardada en los metadatos de la sesión de checkout.
+        const isGift = session.metadata?.isGift === 'true';
 
         if (buyerEmail) {
           // Un PDF por artículo digital, cada uno con su propio código y su
           // propio diseño (Bono de sesiones vs Tarjeta Regalo son distintos).
-          const vouchers: { code: string; pdfBytes: Uint8Array; entrega: 'email' | 'recogida' }[] = [];
+          const vouchers: { code: string; pdfBytes: Uint8Array; isGift: boolean }[] = [];
 
           for (const item of digitalItems) {
             const product = item.price?.product as Stripe.Product | undefined;
             const productId = product?.metadata?.productId ?? '';
-            const entrega = (product?.metadata?.entrega as 'email' | 'recogida') ?? 'email';
             const tipo: VoucherTipo = productId === 'tarjeta-regalo' ? 'tarjeta' : 'bono';
 
             const code = generateVoucherCode();
@@ -69,10 +71,10 @@ export async function POST(req: NextRequest) {
               buyerEmail,
               items: [{ name: item.description ?? 'Bono', quantity: item.quantity ?? 1 }],
               totalAmount: unitAmount,
-              entrega,
+              isGift,
             });
 
-            vouchers.push({ code, pdfBytes, entrega });
+            vouchers.push({ code, pdfBytes, isGift });
           }
 
           await sendVoucherEmail({ to: buyerEmail, recipientName, vouchers });

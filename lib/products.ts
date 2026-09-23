@@ -5,7 +5,7 @@ export type PricingMode = 'fixed' | 'package' | 'custom';
 export type Product = {
   id: string;
   name: string;
-  grupo: 'INDIBA' | 'Dermapen' | 'Peeling' | 'Tarjeta regalo' | 'Para casa';
+  grupo: 'INDIBA' | 'Dermapen' | 'Peeling' | 'Tarjeta regalo' | 'Productos';
   category: 'bono' | 'producto';
   delivery: 'digital' | 'physical';
   description: string;
@@ -16,7 +16,6 @@ export type Product = {
   pricingMode: PricingMode;
   unitLabel: string;
   paquetes?: Paquete[]; // opciones de nº de sesiones, con su precio TOTAL cada una
-  ofrecerRecogida?: boolean;
   image: string;
   paymentUrl?: string;
 };
@@ -40,7 +39,6 @@ export const products: Product[] = [
     precioSesionSuelta: 69.90,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [
       { sesiones: 6, precioTotal: 640 },
       { sesiones: 10, precioTotal: 590 },
@@ -59,7 +57,6 @@ export const products: Product[] = [
     precioSesionSuelta: 79.90,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [
       { sesiones: 6, precioTotal: 449.40 },
       { sesiones: 10, precioTotal: 699.00 },
@@ -78,7 +75,6 @@ export const products: Product[] = [
     precioSesionSuelta: 99,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [
       { sesiones: 6, precioTotal: 540 },
       { sesiones: 10, precioTotal: 850 },
@@ -97,7 +93,6 @@ export const products: Product[] = [
     precioSesionSuelta: 115,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [
       { sesiones: 6, precioTotal: 660 },
       { sesiones: 10, precioTotal: 1005 },
@@ -112,14 +107,13 @@ export const products: Product[] = [
     delivery: 'digital',
     description: 'Combinado de radiofrecuencia INDIBA y presoterapia.',
     duracion: '90 minutos',
-    price: 'Desde 75 € / sesión',
+    price: 'Desde 95 € / sesión',
     precioSesionSuelta: 85,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [
       { sesiones: 6, precioTotal: 640 },
-      { sesiones: 10, precioTotal: 750 },
+      { sesiones: 10, precioTotal: 950 },
     ],
     image: '/images/tienda/bono-indiba-corporal.jpg',
   },
@@ -135,7 +129,6 @@ export const products: Product[] = [
     precioSesionSuelta: 140,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [
       { sesiones: 6, precioTotal: 780 },
       { sesiones: 10, precioTotal: 1200 },
@@ -155,7 +148,6 @@ export const products: Product[] = [
     precioSesionSuelta: 89.90,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [{ sesiones: 3, precioTotal: 246 }],
     image: '/images/tienda/bono-indiba-facial.jpg',
   },
@@ -170,7 +162,6 @@ export const products: Product[] = [
     precioSesionSuelta: 74.90,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [{ sesiones: 3, precioTotal: 210 }],
     image: '/images/tienda/bono-indiba-facial.jpg',
   },
@@ -185,7 +176,6 @@ export const products: Product[] = [
     precioSesionSuelta: 74.90,
     pricingMode: 'package',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     paquetes: [{ sesiones: 3, precioTotal: 210 }],
     image: '/images/tienda/bono-indiba-facial.jpg',
   },
@@ -200,7 +190,6 @@ export const products: Product[] = [
     priceValue: 560,
     pricingMode: 'fixed',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     image: '/images/tienda/bono-indiba-facial.jpg',
   },
 
@@ -216,7 +205,6 @@ export const products: Product[] = [
     priceValue: 220,
     pricingMode: 'fixed',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     image: '/images/tienda/facial.jpg',
   },
   {
@@ -230,7 +218,6 @@ export const products: Product[] = [
     priceValue: 195,
     pricingMode: 'fixed',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     image: '/images/tienda/facial.jpg',
   },
 
@@ -245,15 +232,14 @@ export const products: Product[] = [
     price: 'Importe a elegir',
     pricingMode: 'custom',
     unitLabel: 'unidades',
-    ofrecerRecogida: true,
     image: '/images/tienda/tarjeta-regalo.jpg',
   },
 
-  // ——— Para casa ———
+  // ——— Productos ———
   {
     id: 'vela-masaje',
     name: 'Vela de Masaje',
-    grupo: 'Para casa',
+    grupo: 'Productos',
     category: 'producto',
     delivery: 'physical',
     description: 'Vela de masaje que se funde en aceite tibio para masajes en casa — el mismo ritual de cabina, en tu piel.',

@@ -8,12 +8,11 @@ export type CartLine = {
   quantity: number; // nº de bonos/unidades iguales
   sesiones?: number; // paquete elegido (6 o 10), solo pricingMode 'package'
   customAmount?: number; // solo para pricingMode 'custom' (tarjeta regalo)
-  entrega?: 'email' | 'recogida'; // cómo se recibe el bono/tarjeta digital
 };
 
 type CartContextValue = {
   lines: CartLine[];
-  addItem: (productId: string, quantity: number, options?: { sesiones?: number; customAmount?: number; entrega?: 'email' | 'recogida' }) => void;
+  addItem: (productId: string, quantity: number, options?: { sesiones?: number; customAmount?: number }) => void;
   removeItem: (productId: string, sesiones?: number) => void;
   updateQuantity: (productId: string, quantity: number, sesiones?: number) => void;
   clearCart: () => void;
@@ -22,9 +21,12 @@ type CartContextValue = {
   closeCart: () => void;
   count: number;
   hasPhysicalItems: boolean;
+  hasDigitalItems: boolean;
   physicalSubtotal: number;
   digitalSubtotal: number;
   subtotal: number;
+  isGift: boolean;
+  setIsGift: (value: boolean) => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -48,6 +50,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [isGift, setIsGift] = useState(false);
 
   // Cargar del localStorage al montar (solo en el navegador)
   useEffect(() => {
@@ -70,17 +73,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [lines, hydrated]);
 
-  const addItem = (productId: string, quantity: number, options?: { sesiones?: number; customAmount?: number; entrega?: 'email' | 'recogida' }) => {
+  const addItem = (productId: string, quantity: number, options?: { sesiones?: number; customAmount?: number }) => {
     setLines((prev) => {
       const existing = prev.find((l) => l.productId === productId && l.sesiones === options?.sesiones);
       if (existing) {
         return prev.map((l) =>
           l === existing
-            ? { ...l, quantity: l.quantity + quantity, customAmount: options?.customAmount ?? l.customAmount, entrega: options?.entrega ?? l.entrega }
+            ? { ...l, quantity: l.quantity + quantity, customAmount: options?.customAmount ?? l.customAmount }
             : l
         );
       }
-      return [...prev, { productId, quantity, sesiones: options?.sesiones, customAmount: options?.customAmount, entrega: options?.entrega }];
+      return [...prev, { productId, quantity, sesiones: options?.sesiones, customAmount: options?.customAmount }];
     });
     setIsOpen(true);
   };
@@ -114,11 +117,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       closeCart: () => setIsOpen(false),
       count: lines.reduce((sum, l) => sum + l.quantity, 0),
       hasPhysicalItems: physicalLines.length > 0,
+      hasDigitalItems: digitalLines.length > 0,
       physicalSubtotal,
       digitalSubtotal,
       subtotal: physicalSubtotal + digitalSubtotal,
+      isGift,
+      setIsGift,
     };
-  }, [lines, isOpen]);
+  }, [lines, isOpen, isGift]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

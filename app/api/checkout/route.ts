@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { products, SHIPPING_COST } from '@/lib/products';
 import { site, getBaseUrl } from '@/lib/site-data';
 
-type IncomingLine = { productId: string; quantity: number; sesiones?: number; customAmount?: number; entrega?: 'email' | 'recogida' };
+type IncomingLine = { productId: string; quantity: number; sesiones?: number; customAmount?: number };
 
 export async function POST(req: NextRequest) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
   const lines: IncomingLine[] = body?.lines ?? [];
   const deliveryMethod: 'pickup' | 'shipping' | 'digital' = body?.deliveryMethod ?? 'digital';
   const shippingCost: number = typeof body?.shippingCost === 'number' ? body.shippingCost : 0;
+  const isGift: boolean = Boolean(body?.isGift);
 
   if (!Array.isArray(lines) || lines.length === 0) {
     return NextResponse.json({ error: 'empty-cart' }, { status: 400 });
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
         unit_amount: unitAmount,
         product_data: {
           name: nombreLinea,
-          metadata: { productId: product.id, delivery: product.delivery, entrega: line.entrega ?? 'email' },
+          metadata: { productId: product.id, delivery: product.delivery },
         },
       },
     });
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
       ],
       success_url: `${getBaseUrl()}/tienda/gracias?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${getBaseUrl()}/tienda`,
-      metadata: { deliveryMethod },
+      metadata: { deliveryMethod, isGift: String(isGift) },
     });
 
     return NextResponse.json({ url: session.url });

@@ -35,7 +35,7 @@ export default function CartDrawer() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lines: cart.lines, deliveryMethod, shippingCost }),
+        body: JSON.stringify({ lines: cart.lines, deliveryMethod, shippingCost, isGift: cart.isGift }),
       });
 
       if (!res.ok) throw new Error('checkout-unavailable');
@@ -51,7 +51,7 @@ export default function CartDrawer() {
       // En vez de dejar al cliente colgado, mandamos el pedido por WhatsApp.
       const message = `Hola, quiero hacer este pedido: ${itemsSummary}. Entrega: ${
         deliveryMethod === 'pickup' ? 'recogida en el centro' : deliveryMethod === 'shipping' ? 'envío a domicilio' : 'digital'
-      }. Total estimado: ${formatEUR(total)}.`;
+      }. Total estimado: ${formatEUR(total)}.${cart.isGift ? ' Es para regalo — me gustaría pasarme a recoger un bono/tarjeta físico personalizado.' : ''}`;
       window.open(`https://wa.me/${site.whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
       setError('El pago online no está disponible todavía — te hemos abierto WhatsApp para cerrar el pedido.');
     } finally {
@@ -91,7 +91,6 @@ export default function CartDrawer() {
                         {line.sesiones ? `Bono ${line.sesiones} sesiones` : `${line.quantity} ${product.unitLabel}`}
                         {line.sesiones ? ` · x${line.quantity}` : ''}
                         {line.customAmount ? ` · ${formatEUR(line.customAmount)} c/u` : ''}
-                        {line.entrega === 'recogida' ? ' · Recogida en el centro' : ''}
                       </p>
                       <div className="flex items-center gap-2">
                         <button
@@ -163,6 +162,21 @@ export default function CartDrawer() {
                 <span>{formatEUR(total)}</span>
               </div>
               <p className="text-[11px] text-stone -mt-2">IVA incluido</p>
+
+              {cart.hasDigitalItems && (
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    id="es-regalo"
+                    checked={cart.isGift}
+                    onChange={(e) => cart.setIsGift(e.target.checked)}
+                    className="mt-0.5 accent-gold-dark"
+                  />
+                  <label htmlFor="es-regalo" className="text-xs text-stone cursor-pointer">
+                    Es para regalo — además de recibirlo por email en PDF, quiero pasarme por el centro a por un bono/tarjeta físico personalizado.
+                  </label>
+                </div>
+              )}
 
               {error && <p className="text-xs text-stone bg-gold/10 border border-gold/30 p-2">{error}</p>}
 

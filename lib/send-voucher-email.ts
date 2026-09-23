@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 import { site, getBaseUrl } from '@/lib/site-data';
 import { emailWrapper } from '@/lib/email-template';
 
-type VoucherAdjunto = { code: string; pdfBytes: Uint8Array; entrega: 'email' | 'recogida' };
+type VoucherAdjunto = { code: string; pdfBytes: Uint8Array; isGift?: boolean };
 
 export async function sendVoucherEmail({
   to,
@@ -23,7 +23,7 @@ export async function sendVoucherEmail({
 
   const resend = new Resend(apiKey);
 
-  const hayRecogida = vouchers.some((v) => v.entrega === 'recogida');
+  const hayRegalo = vouchers.some((v) => v.isGift);
   const codigos = vouchers.map((v) => v.code).join(', ');
 
   const html = emailWrapper({
@@ -37,8 +37,8 @@ export async function sendVoucherEmail({
         con ${vouchers.length > 1 ? 'los códigos' : 'el código'}: <strong>${codigos}</strong>.
       </p>
       ${
-        hayRecogida
-          ? `<p style="margin:0 0 16px;">Elegiste recogerlo gratis en el centro — no hace falta que lo imprimas, con enseñarnos el código en cabina es suficiente.</p>`
+        hayRegalo
+          ? `<p style="margin:0 0 16px;">Como es para regalo, si lo prefieres puedes pasarte por el centro y te preparamos un acabado físico personalizado — con enseñarnos el código en cabina es suficiente.</p>`
           : ''
       }
       <p style="margin:0;">
@@ -60,13 +60,13 @@ export async function sendVoucherEmail({
     })),
   });
 
-  // Copia interna para que sepáis que hay que agendar la sesión / preparar la recogida.
+  // Copia interna para que sepáis que hay que agendar la sesión / preparar el regalo.
   if (process.env.BUSINESS_NOTIFICATION_EMAIL) {
     const htmlInterno = emailWrapper({
       preheader: `Nueva venta — ${codigos}`,
       heading: 'Nueva venta de bono/tarjeta',
       bodyHtml: `<p style="margin:0;">Se ha vendido: código${vouchers.length > 1 ? 's' : ''} <strong>${codigos}</strong>, a ${to}${recipientName ? ` para ${recipientName}` : ''}.${
-        hayRecogida ? ' Al menos uno es para <strong>recogida en el centro</strong>.' : ''
+        hayRegalo ? ' Es <strong>para regalo</strong> — puede pasarse a recoger un acabado físico personalizado.' : ''
       }</p>`,
     });
     await resend.emails.send({
